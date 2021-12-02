@@ -15,61 +15,7 @@ void application::scroll_callback(double x, double y) {}
 // }
 
 void application::init_shader() {
-  // Compile and create the vertex shader.
-  auto vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertex_shader, 1, &vertex_shader_text, nullptr);
-  glCompileShader(vertex_shader);
-  {
-    // Check for errors.
-    GLint success;
-    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      char info_log[512];
-      glGetShaderInfoLog(vertex_shader, 512, nullptr, info_log);
-      throw runtime_error(
-          string("OpenGL Error: Failed to compile vertex shader!: ") +
-          info_log);
-    }
-  }
-
-  // Compile and create the fragment shader.
-  auto fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragment_shader, 1, &fragment_shader_text, nullptr);
-  glCompileShader(fragment_shader);
-  {
-    // Check for errors.
-    GLint success;
-    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      char info_log[512];
-      glGetShaderInfoLog(fragment_shader, 512, nullptr, info_log);
-      throw runtime_error(
-          string("OpenGL Error: Failed to compile fragment shader!: ") +
-          info_log);
-    }
-  }
-
-  // Link vertex shader and fragment shader to shader program.
-  program = glCreateProgram();
-  glAttachShader(program, vertex_shader);
-  glAttachShader(program, fragment_shader);
-  glLinkProgram(program);
-  {
-    // Check for errors.
-    GLint success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
-    if (!success) {
-      char info_log[512];
-      glGetProgramInfoLog(program, 512, nullptr, info_log);
-      throw runtime_error(
-          string("OpenGL Error: Failed to link shader program!: ") + info_log);
-    }
-  }
-
-  // Delete unused shaders.
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
-
+  program = shader_program({vertex_shader_text}, {fragment_shader_text});
   // Get identifier locations in the shader program
   // to change their values from the outside.
   mvp_location = glGetUniformLocation(program, "MVP");

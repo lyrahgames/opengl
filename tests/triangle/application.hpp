@@ -50,7 +50,8 @@ class application : public glfw_application<application> {
   GLuint vertex_buffer;
 
   // Shader Handles
-  GLuint program;
+  // GLuint program;
+  shader_program program;
   GLint mvp_location, vpos_location, vcol_location;
 
   // Transformation Matrices
