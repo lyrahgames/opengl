@@ -51,7 +51,7 @@ class application : public glfw_application<application> {
 
   // Shader Handles
   // GLuint program;
-  shader_program program;
+  shader_program shader;
   GLint mvp_location, vpos_location, vcol_location;
 
   // Transformation Matrices

@@ -18,6 +18,11 @@ concept has_setup = requires(T& t) {
 };
 
 template <typename T>
+concept has_cleanup = requires(T& t) {
+  t.cleanup();
+};
+
+template <typename T>
 concept has_render = requires(T& t) {
   t.render();
 };
@@ -209,6 +214,9 @@ void glfw_application<T>::run() {
 
     glfwSwapBuffers(window);
   }
+
+  if constexpr (has_cleanup<T>)  //
+    detail_cast().cleanup();
 }
 
 }  // namespace lyrahgames::opengl

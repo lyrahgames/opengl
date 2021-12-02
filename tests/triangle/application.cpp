@@ -15,12 +15,12 @@ void application::scroll_callback(double x, double y) {}
 // }
 
 void application::init_shader() {
-  program = shader_program({vertex_shader_text}, {fragment_shader_text});
+  shader = shader_program({vertex_shader_text}, {fragment_shader_text});
   // Get identifier locations in the shader program
   // to change their values from the outside.
-  mvp_location = glGetUniformLocation(program, "MVP");
-  vpos_location = glGetAttribLocation(program, "vPos");
-  vcol_location = glGetAttribLocation(program, "vCol");
+  mvp_location = glGetUniformLocation(shader, "MVP");
+  vpos_location = glGetAttribLocation(shader, "vPos");
+  vcol_location = glGetAttribLocation(shader, "vCol");
 }
 
 void application::init_vertex_data() {
@@ -81,7 +81,7 @@ void application::render() {
   // Bind vertex array of triangle
   // and use the created shader
   // to render the triangle.
-  glUseProgram(program);
+  glUseProgram(shader);
   glBindVertexArray(vertex_array);
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
