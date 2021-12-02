@@ -1,0 +1,6 @@
+$out_root/
+{
+  include lyrahgames/opengl/
+}
+
+export $out_root/lyrahgames/opengl/$import.target

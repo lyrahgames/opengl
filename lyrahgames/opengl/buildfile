@@ -1,0 +1,61 @@
+intf_libs = # Interface dependencies.
+import intf_libs += glbinding%lib{glbinding}
+import intf_libs += glfw%lib{glfw}
+import intf_libs += glm%lib{glm}
+import intf_libs += lyrahgames-xstd%lib{lyrahgames-xstd}
+
+if ($cxx.target.class != 'windows')
+  import intf_libs += pthread%lib{pthread}
+
+impl_libs = # Implementation dependencies.
+
+lib{lyrahgames-opengl}: \
+  {hxx ixx txx cxx}{** -version} hxx{version} $impl_libs $intf_libs
+
+# Include the generated version header into the distribution (so that we don't
+# pick up an installed one) and don't remove it when cleaning in src (so that
+# clean results in a state identical to distributed).
+#
+hxx{version}: in{version} $src_root/manifest
+{
+  dist  = true
+  clean = ($src_root != $out_root)
+}
+
+hxx{export}@./: cxx.importable = false
+
+# Build options.
+#
+cxx.poptions =+ "-I$out_root" "-I$src_root"
+
+{hbmia obja}{*}: cxx.poptions += -DLYRAHGAMES_OPENGL_STATIC_BUILD
+{hbmis objs}{*}: cxx.poptions += -DLYRAHGAMES_OPENGL_SHARED_BUILD
+
+# Export options.
+#
+lib{lyrahgames-opengl}:
+{
+  cxx.export.poptions = "-I$out_root" "-I$src_root"
+  cxx.export.libs = $intf_libs
+}
+
+liba{lyrahgames-opengl}: cxx.export.poptions += -DLYRAHGAMES_OPENGL_STATIC
+libs{lyrahgames-opengl}: cxx.export.poptions += -DLYRAHGAMES_OPENGL_SHARED
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{lyrahgames-opengl}: bin.lib.version = "-$version.project_id"
+else
+  lib{lyrahgames-opengl}: bin.lib.version = "-$version.major.$version.minor"
+
+# Install into the lyrahgames-opengl/ subdirectory of, say, /usr/include/
+# recreating subdirectories.
+#
+{hxx ixx txx}{*}:
+{
+  install         = include/lyrahgames/opengl/
+  install.subdirs = true
+}
