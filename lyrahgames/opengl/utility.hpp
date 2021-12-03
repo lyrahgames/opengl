@@ -1,4 +1,7 @@
 #pragma once
+#include <cassert>
+#include <cmath>
+#include <numbers>
 #include <stdexcept>
 #include <string>
 
@@ -16,5 +19,7 @@ using namespace std;
 using namespace gl;
 using namespace glm;
 using namespace lyrahgames::xstd;
+
+constexpr auto pi = numbers::pi_v<float>;
 
 }  // namespace lyrahgames::opengl
