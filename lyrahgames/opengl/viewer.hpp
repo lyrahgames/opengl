@@ -98,7 +98,7 @@ void viewer<T>::update_view() {
 template <typename T>
 void viewer<T>::turn(const vec2& mouse_move) {
   altitude += mouse_move.y * 0.01;
-  azimuth -= mouse_move.x * 0.01;
+  azimuth += mouse_move.x * 0.01;
   constexpr float bound = pi / 2 - 1e-5f;
   altitude = std::clamp(altitude, -bound, bound);
   view_should_update = true;
