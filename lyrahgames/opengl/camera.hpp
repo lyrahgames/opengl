@@ -5,10 +5,7 @@ namespace lyrahgames::opengl {
 
 class camera {
  public:
-  constexpr camera(int w = 500,
-                   int h = 500,
-                   float yfov = 45.0f,
-                   float n = 0.1f,
+  constexpr camera(int w = 500, int h = 500, float yfov = 45.0f, float n = 0.1f,
                    float f = 100.0f) noexcept {
     set_perspective(w, h, yfov, n, f);
   }
@@ -86,7 +83,7 @@ class camera {
   float ratio = 1;
   float pixel;
 
-  float dmin = 0.1f;
+  float dmin = 0.01f;
   float dmax = 100.0f;
 
   mat4 view{1};

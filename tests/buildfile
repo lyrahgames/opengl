@@ -1,3 +1,2 @@
-import libs = lyrahgames-opengl%lib{lyrahgames-opengl}
 ./: {*/ -build/}
 

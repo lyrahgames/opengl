@@ -1,4 +1,5 @@
 #include <future>
+#include <iostream>
 #include <thread>
 //
 #include <lyrahgames/opengl/opengl.hpp>
@@ -6,8 +7,8 @@
 using namespace std;
 using namespace lyrahgames::opengl;
 
-class application : public viewer<application> {
-  using base = viewer<application>;
+class application : public glfw_application<application> {
+  using base = glfw_application<application>;
 
   static constexpr struct {
     float x, y;     // 2D Position
@@ -39,20 +40,22 @@ class application : public viewer<application> {
   GLuint vertex_array;
   GLuint vertex_buffer;
   shader_program shader;
+  mat4 projection;
 
  public:
-  using base::window;
-  application() : base{500, 500, "Multi-Threaded Triangle Test"} {}
-  // Constructor for customization.
-  explicit application(auto&& f) : application{} {
-    // glfwMakeContextCurrent(window);
-    invoke(forward<decltype(f)>(f));
-    // glfwMakeContextCurrent(nullptr);
+  application() : base{500, 500, "Simple Triangle Test"} {}
+
+  void process_events() {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+      glfwSetWindowShouldClose(window, true);
+  }
+
+  void resize(int width, int height) {
+    glViewport(0, 0, width, height);
+    projection = perspective(45.0f, float(width) / height, 0.1f, 1000.0f);
   }
 
   void setup() {
-    base::setup();
-
     // Create shader for triangle.
     shader = shader_program({vertex_shader_text}, {fragment_shader_text});
 
@@ -77,18 +80,22 @@ class application : public viewer<application> {
     glEnableVertexAttribArray(vcol_location);
     glVertexAttribPointer(vcol_location, 3, GL_FLOAT, GL_FALSE,
                           sizeof(vertices[0]), (void*)(sizeof(float) * 2));
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    resize(width, height);
   }
 
   void update() {
-    base::update();
-
     // Continuously rotate the triangle.
     auto model = glm::mat4{1.0f};
     const auto axis = glm::normalize(glm::vec3(1, 1, 1));
     model = rotate(model, float(glfwGetTime()), axis);
 
+    const auto view = lookAt(vec3{0, 0, 5}, {0, 0, 0}, {0, 1, 0});
+
     // Compute the model-view-projection matrix (MVP).
-    const auto mvp = cam.projection_matrix() * cam.view_matrix() * model;
+    const auto mvp = projection * view * model;
     // Transfer the MVP to the GPU.
     glUniformMatrix4fv(glGetUniformLocation(shader, "MVP"), 1, GL_FALSE,
                        glm::value_ptr(mvp));
@@ -108,11 +115,25 @@ class application : public viewer<application> {
 };
 
 int main() {
+  // glfw_context context;
+  // application app{};
+  // application app2{};
+
+  // glfwInit();
+  cout << "main thread = " << this_thread::get_id() << endl;
+
+  // glfw_context context{};
+  // glfw_window window{context};
+  // glfw_window window2{context};
+
   // Run two applications with different background color in parallel.
   auto app_task = async(launch::async, [&] {
     // jthread t1{[] {
     application app{};
-    // application app{[] { glClearColor(0, 0.5, 0.8, 1.0); }};
+    // glfw_context context{};
+    // glfw_window window{context};
+    // auto window = glfwCreateWindow(500, 500, "app1", nullptr, nullptr);
+    cout << "app1 created on thread " << this_thread::get_id() << endl;
     app.run();
     // }};
   });
@@ -120,11 +141,14 @@ int main() {
   auto app2_task = async(launch::async, [&] {
     // jthread t2{[] {
     application app{};
-    // application app{[] { glClearColor(0.8, 0.5, 0.0, 1.0); }};
+    // glfw_context context{};
+    // glfw_window window{context};
+    // auto window = glfwCreateWindow(500, 500, "app2", nullptr, nullptr);
+    cout << "app2 created on thread " << this_thread::get_id() << endl;
     app.run();
     // }};
   });
 
-  app_task.wait();
-  app2_task.wait();
+  // app_task.wait();
+  // app2_task.wait();
 }

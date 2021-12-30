@@ -52,6 +52,7 @@ class shader_object {
 };
 
 using vertex_shader = shader_object<GL_VERTEX_SHADER>;
+using geometry_shader = shader_object<GL_GEOMETRY_SHADER>;
 using fragment_shader = shader_object<GL_FRAGMENT_SHADER>;
 
 class shader_program {
@@ -61,14 +62,10 @@ class shader_program {
     link_error(auto&& x) : base(forward<decltype(x)>(x)) {}
   };
 
-  shader_program() = default;
+  void init() { handle = glCreateProgram(); }
 
-  shader_program(const vertex_shader& vs, const fragment_shader& fs) {
-    handle = glCreateProgram();
-    glAttachShader(handle, vs);
-    glAttachShader(handle, fs);
+  void link() {
     glLinkProgram(handle);
-
     // Check for errors.
     GLint success;
     glGetProgramiv(handle, GL_LINK_STATUS, &success);
@@ -77,6 +74,24 @@ class shader_program {
       glGetProgramInfoLog(handle, 512, nullptr, info_log);
       throw link_error(string("Failed to link shader program. ") + info_log);
     }
+  }
+
+  shader_program() = default;
+
+  shader_program(const vertex_shader& vs, const geometry_shader& gs,
+                 const fragment_shader& fs) {
+    init();
+    glAttachShader(handle, vs);
+    glAttachShader(handle, gs);
+    glAttachShader(handle, fs);
+    link();
+  }
+
+  shader_program(const vertex_shader& vs, const fragment_shader& fs) {
+    handle = glCreateProgram();
+    glAttachShader(handle, vs);
+    glAttachShader(handle, fs);
+    link();
   }
 
   ~shader_program() {

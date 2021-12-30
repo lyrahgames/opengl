@@ -1,23 +1,13 @@
-#include "glfw_context.hpp"
-//
-#include <iostream>
-#include <mutex>
-#include <stdexcept>
-//
-// GLFW without OpenGL Headers
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
+#include <lyrahgames/opengl/glfw_context.hpp>
 
 namespace lyrahgames::opengl {
 
-// Use static linkage for thread-sync variables.
-namespace {
-size_t object_count = 0;
-mutex mutex{};
-}  // namespace
+// These static variables need to be defined in a source file.
+size_t glfw_context::object_count = 0;
+mutex glfw_context::context_mutex{};
 
 void glfw_context::init() {
-  scoped_lock lock{mutex};
+  scoped_lock lock{context_mutex};
   if (object_count++) return;
   if (!glfwInit()) throw runtime_error("Failed to initialize GLFW.");
   glfwSetErrorCallback([](int error, const char* description) {
@@ -26,7 +16,7 @@ void glfw_context::init() {
 }
 
 void glfw_context::free() {
-  scoped_lock lock{mutex};
+  scoped_lock lock{context_mutex};
   if (--object_count) return;
   glfwTerminate();
 }
