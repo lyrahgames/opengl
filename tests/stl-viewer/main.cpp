@@ -26,6 +26,7 @@ class application : public viewer<application> {
       "attribute vec3 vdl;"
       "attribute float vlv;"
       "attribute float vlvg;"
+      "attribute float vlvc;"
 
       "out vec4 position;"
       "out vec4 normal;"
@@ -33,6 +34,7 @@ class application : public viewer<application> {
       "out vec3 light_gradient;"
       "out float light_variation;"
       "out float light_variation_gradient;"
+      "out float light_variation_curve;"
 
       "void main(){"
       "  mat4 mv = view * model;"
@@ -43,6 +45,7 @@ class application : public viewer<application> {
       "  light_gradient = vdl;"
       "  light_variation = vlv;"
       "  light_variation_gradient = vlvg;"
+      "  light_variation_curve = vlvc;"
       "  gl_Position = projection * view * position;"
       "}";
 
@@ -52,7 +55,11 @@ class application : public viewer<application> {
       "layout (triangles) in;"
       "layout (line_strip, max_vertices = 6) out;"
 
+      "in float light_variation[];"
       "in float light_variation_gradient[];"
+      "in float light_variation_curve[];"
+
+      "out float strength;"
 
       "void main(){"
       "  vec4 x = gl_in[0].gl_Position;"
@@ -63,30 +70,55 @@ class application : public viewer<application> {
       "  float ly = light_variation_gradient[1];"
       "  float lz = light_variation_gradient[2];"
 
-      "  bool a = lx * ly < 0;"
-      "  bool b = ly * lz < 0;"
-      "  bool c = lz * lx < 0;"
+      "  float sx = light_variation[0];"
+      "  float sy = light_variation[1];"
+      "  float sz = light_variation[2];"
+
+      "  float cx = light_variation_curve[0];"
+      "  float cy = light_variation_curve[1];"
+      "  float cz = light_variation_curve[2];"
 
       "  vec4 pa = (abs(ly) * x + abs(lx) * y) / (abs(lx) + abs(ly));"
       "  vec4 pb = (abs(lz) * y + abs(ly) * z) / (abs(ly) + abs(lz));"
       "  vec4 pc = (abs(lx) * z + abs(lz) * x) / (abs(lz) + abs(lx));"
 
+      "  float pca = (abs(ly) * cx + abs(lx) * cy) / (abs(lx) + abs(ly));"
+      "  float pcb = (abs(lz) * cy + abs(ly) * cz) / (abs(ly) + abs(lz));"
+      "  float pcc = (abs(lx) * cz + abs(lz) * cx) / (abs(lz) + abs(lx));"
+
+      "  float sa = (abs(ly) * sx + abs(lx) * sy) / (abs(lx) + abs(ly));"
+      "  float sb = (abs(lz) * sy + abs(ly) * sz) / (abs(ly) + abs(lz));"
+      "  float sc = (abs(lx) * sz + abs(lz) * sx) / (abs(lz) + abs(lx));"
+
+      "  float eps = 0;"
+      "  bool test = (cx < eps) && (cy < eps) && (cz < eps);"
+
+      "  bool a = (lx * ly < 0) && (pca < eps);"
+      "  bool b = (ly * lz < 0) && (pcb < eps);"
+      "  bool c = (lz * lx < 0) && (pcc < eps);"
+
       "  if (a && b) {"
       "    gl_Position = pa;"
+      "    strength = sa;"
       "    EmitVertex();"
       "    gl_Position = pb;"
+      "    strength = sb;"
       "    EmitVertex();"
       "  }"
       "  if (b && c) {"
       "    gl_Position = pb;"
+      "    strength = sb;"
       "    EmitVertex();"
       "    gl_Position = pc;"
+      "    strength = sc;"
       "    EmitVertex();"
       "  }"
       "  if (c && a) {"
       "    gl_Position = pc;"
+      "    strength = sc;"
       "    EmitVertex();"
       "    gl_Position = pa;"
+      "    strength = sa;"
       "    EmitVertex();"
       "  }"
       "  EndPrimitive();"
@@ -103,6 +135,7 @@ class application : public viewer<application> {
       "in vec3 light_gradient;"
       "in float light_variation;"
       "in float light_variation_gradient;"
+      "in float light_variation_curve;"
 
       "float near = 0.1;"
       "float far  = 100.0;"
@@ -115,7 +148,7 @@ class application : public viewer<application> {
       // "  float light = abs(dot(normal, position)) / "
       // "length(vec3(position));"
       // "  float light = max(0.0, -dot(vec3(normal), view_dir));"
-      "  gl_FragColor = vec4(vec3(1.0 - light), 1.0);"
+      // "  gl_FragColor = vec4(vec3(0.5 + 0.5*light), 1.0);"
       // "  if (light < 4e-1)"
       // "    gl_FragColor = vec4(0.0);"
       // "  else"
@@ -125,6 +158,18 @@ class application : public viewer<application> {
       // "  gl_FragColor = vec4(vec3(length(light_gradient)), 1.0);"
       // "  gl_FragColor = vec4(vec3(light_variation), 1.0);"
       // "  gl_FragColor = vec4(vec3((abs(light_variation_gradient))), 1.0);"
+      // "  gl_FragColor = vec4(vec3((abs(light_variation_curve))), 1.0);"
+      // "  if (light_variation_curve < 0)"
+      // "    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);"
+      // "  else"
+      // "    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);"
+      "  float strength = light;"
+      "  if (strength <= 0.20) strength = 0.20;"
+      "  else if (strength <= 0.40) strength = 0.40;"
+      "  else if (strength <= 0.60) strength = 0.60;"
+      "  else if (strength <= 0.80) strength = 0.80;"
+      "  else if (strength <= 1.00) strength = 1.00;"
+      "  gl_FragColor = vec4(vec3(strength), 1.0);"
       "}";
 
   GLuint vertex_array;
@@ -149,8 +194,15 @@ class application : public viewer<application> {
 
   static constexpr czstring line_fragment_shader_text =
       "#version 330 core\n"
+      "in float strength;"
+      "uniform float threshold;"
       "void main(){"
-      "  gl_FragColor = vec4(vec3(0.0), 1.0);"
+      // "  float threshold = 0.0045;"
+      "  float scale = 0.5;"
+      "  if (strength < threshold) discard;"
+      "  float alpha = scale * (strength - threshold) / (1.0 - threshold);"
+      "  alpha += 1 - scale;"
+      "  gl_FragColor = vec4(vec3(0.0), alpha);"
       "}";
 
   GLuint line_vertex_array;
@@ -164,6 +216,7 @@ class application : public viewer<application> {
     vec3 light_gradient;
     float light_variation;
     float light_variation_gradient;
+    float light_variation_curve;
   };
   vector<vertex> vertices;
   using face = array<uint32_t, 3>;
@@ -175,6 +228,9 @@ class application : public viewer<application> {
   vector<line_vertex> line_vertices;
   using edge = array<uint32_t, 2>;
   vector<edge> edges;
+
+  float threshold = 0;
+  float threshold_shift = 0;
 
  public:
   using base::window;
@@ -270,7 +326,7 @@ class application : public viewer<application> {
     // Create shader for triangle.
     shader = shader_program({vertex_shader_text}, {fragment_shader_text});
     pel_shader = shader_program({vertex_shader_text}, {geometry_shader_text},
-                                {fragment_shader_text});
+                                {line_fragment_shader_text});
 
     // Use a vertex array to be able to reference the vertex buffer and
     // the vertex attribute arrays of the triangle with one single variable.
@@ -325,6 +381,12 @@ class application : public viewer<application> {
                           sizeof(vertices[0]),
                           (void*)offsetof(vertex, light_variation_gradient));
 
+    const auto vlvc_location = glGetAttribLocation(shader, "vlvc");
+    glEnableVertexAttribArray(vlvc_location);
+    glVertexAttribPointer(vlvc_location, 1, GL_FLOAT, GL_FALSE,
+                          sizeof(vertices[0]),
+                          (void*)offsetof(vertex, light_variation_curve));
+
     glGenVertexArrays(1, &pel_vertex_array);
     glBindVertexArray(pel_vertex_array);
     glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
@@ -377,6 +439,14 @@ class application : public viewer<application> {
                             (void*)offsetof(vertex, light_variation_gradient));
     }
 
+    {
+      const auto vlvc_location = glGetAttribLocation(pel_shader, "vlvc");
+      glEnableVertexAttribArray(vlvc_location);
+      glVertexAttribPointer(vlvc_location, 1, GL_FLOAT, GL_FALSE,
+                            sizeof(vertices[0]),
+                            (void*)offsetof(vertex, light_variation_curve));
+    }
+
     // line_shader = {{line_vertex_shader_text}, {line_fragment_shader_text}};
     // // Use a vertex array to be able to reference the vertex buffer and
     // // the vertex attribute arrays of the triangle with one single variable.
@@ -394,6 +464,8 @@ class application : public viewer<application> {
     //                       (void*)offsetof(line_vertex, position));
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glLineWidth(4.0f);
   }
 
@@ -406,6 +478,7 @@ class application : public viewer<application> {
       v.light_gradient = {};
       v.light_variation = 0;
       v.light_variation_gradient = 0;
+      v.light_variation_curve = 0;
     }
 
     vector<size_t> counts(vertices.size(), 0);
@@ -493,18 +566,10 @@ class application : public viewer<application> {
       const auto t = vertices[i].light_variation_gradient;
       max_variation_gradient = std::max(max_variation_gradient, t);
     }
-
     // for (auto& v : vertices) {
     //   v.light_variation_gradient /= max_variation_gradient;
     // }
 
-    glBindVertexArray(vertex_array);
-    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-    // The data is not changing rapidly. Therefore we use GL_STATIC_DRAW.
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]),
-                 vertices.data(), GL_DYNAMIC_DRAW);
-
-    line_vertices.clear();
     for (const auto& f : faces) {
       const auto x = vertices[f[0]].position;
       const auto y = vertices[f[1]].position;
@@ -514,29 +579,79 @@ class application : public viewer<application> {
       const auto ly = vertices[f[1]].light_variation_gradient;
       const auto lz = vertices[f[2]].light_variation_gradient;
 
-      const auto a = lx * ly < 0;
-      const auto b = ly * lz < 0;
-      const auto c = lz * lx < 0;
+      const auto u = y - x;
+      const auto v = z - x;
 
-      const auto pa = (abs(ly) * x + abs(lx) * y) / (abs(lx) + abs(ly));
-      const auto pb = (abs(lz) * y + abs(ly) * z) / (abs(ly) + abs(lz));
-      const auto pc = (abs(lx) * z + abs(lz) * x) / (abs(lz) + abs(lx));
+      const auto dlu = ly - lx;
+      const auto dlv = lz - lx;
 
-      constexpr float bound = 1e-1f;
+      const auto u2 = dot(u, u);
+      const auto v2 = dot(v, v);
+      const auto uv = dot(u, v);
 
-      if (a && b) {
-        line_vertices.push_back({pa});
-        line_vertices.push_back({pb});
-      }
-      if (b && c) {
-        line_vertices.push_back({pb});
-        line_vertices.push_back({pc});
-      }
-      if (c && a) {
-        line_vertices.push_back({pc});
-        line_vertices.push_back({pa});
+      const auto inv_det = 1 / (u2 * v2 - uv * uv);
+
+      const auto p = (v2 * dlu - uv * dlv) * inv_det;
+      const auto q = (u2 * dlv - uv * dlu) * inv_det;
+
+      const auto grad = p * u + q * v;
+
+      for (int i = 0; i < 3; ++i) {
+        vertices[f[i]].light_variation_curve +=
+            dot(grad, normalize(vertices[f[i]].light_gradient));
       }
     }
+
+    float max_variation_curve = 0;
+    for (size_t i = 0; i < vertices.size(); ++i) {
+      vertices[i].light_variation_curve /= counts[i];
+      const auto t = vertices[i].light_variation_curve;
+      max_variation_curve = std::max(max_variation_curve, std::abs(t));
+    }
+
+    // for (auto& v : vertices) {
+    //   v.light_variation_curve /= max_variation_curve;
+    // }
+
+    glBindVertexArray(vertex_array);
+    glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+    // The data is not changing rapidly. Therefore we use GL_STATIC_DRAW.
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vertices[0]),
+                 vertices.data(), GL_DYNAMIC_DRAW);
+
+    // line_vertices.clear();
+    // for (const auto& f : faces) {
+    //   const auto x = vertices[f[0]].position;
+    //   const auto y = vertices[f[1]].position;
+    //   const auto z = vertices[f[2]].position;
+
+    //   const auto lx = vertices[f[0]].light_variation_gradient;
+    //   const auto ly = vertices[f[1]].light_variation_gradient;
+    //   const auto lz = vertices[f[2]].light_variation_gradient;
+
+    //   const auto a = lx * ly < 0;
+    //   const auto b = ly * lz < 0;
+    //   const auto c = lz * lx < 0;
+
+    //   const auto pa = (abs(ly) * x + abs(lx) * y) / (abs(lx) + abs(ly));
+    //   const auto pb = (abs(lz) * y + abs(ly) * z) / (abs(ly) + abs(lz));
+    //   const auto pc = (abs(lx) * z + abs(lz) * x) / (abs(lz) + abs(lx));
+
+    //   constexpr float bound = 1e-1f;
+
+    //   if (a && b) {
+    //     line_vertices.push_back({pa});
+    //     line_vertices.push_back({pb});
+    //   }
+    //   if (b && c) {
+    //     line_vertices.push_back({pb});
+    //     line_vertices.push_back({pc});
+    //   }
+    //   if (c && a) {
+    //     line_vertices.push_back({pc});
+    //     line_vertices.push_back({pa});
+    //   }
+    // }
 
     // glBindVertexArray(line_vertex_array);
     // glBindBuffer(GL_ARRAY_BUFFER, line_vertex_buffer);
@@ -584,13 +699,21 @@ class application : public viewer<application> {
     glUniformMatrix4fv(glGetUniformLocation(pel_shader, "projection"), 1,
                        GL_FALSE, glm::value_ptr(cam.projection_matrix()));
 
-    update_light();
+    const float scale = 1.0;
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS) threshold_shift += 0.1;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) threshold_shift -= 0.1;
+
+    threshold = 1 / (1 + exp(-scale * threshold_shift));
+
+    glUniform1f(glGetUniformLocation(pel_shader, "threshold"), threshold);
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) update_light();
   }
 
   void render() {
     // Clear the screen.
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glClearColor(0.5, 0.5, 0.5, 1.0);
+    glClearColor(1.0, 1.0, 1.0, 1.0);
 
     // Bind vertex array of triangle
     // and use the created shader
